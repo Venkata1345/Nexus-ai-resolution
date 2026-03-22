@@ -1,0 +1,5 @@
+outs:
+- md5: 2c584c473a12003b38d5d11cec4c8593
+  size: 19229347
+  hash: md5
+  path: bitext_support_data.csv
