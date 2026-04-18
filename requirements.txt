@@ -6,6 +6,8 @@ mlflow
 joblib
 # Sentence embedding encoder (brings in torch + transformers)
 sentence-transformers
+# Hyperparameter tuning
+optuna
 
 # --- Phase 2: Agentic Framework ---
 langgraph

@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_batch_size: int = 64
 
+    # -------- Hyperparameter tuning --------
+    optuna_n_trials: int = 20
+
     # -------- Data split --------
     # 3-way stratified split. Train gets what's left after val + test.
     val_fraction: float = 0.15
@@ -81,6 +84,18 @@ class Settings(BaseSettings):
     @property
     def test_csv_path(self) -> Path:
         return self.processed_data_dir / "test.csv"
+
+    @property
+    def train_embeddings_path(self) -> Path:
+        return self.processed_data_dir / "train_embeddings.npy"
+
+    @property
+    def val_embeddings_path(self) -> Path:
+        return self.processed_data_dir / "val_embeddings.npy"
+
+    @property
+    def test_embeddings_path(self) -> Path:
+        return self.processed_data_dir / "test_embeddings.npy"
 
 
 @lru_cache(maxsize=1)

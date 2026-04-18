@@ -1,17 +1,13 @@
-"""Train the sentence-transformer + XGBoost intent classifier.
+"""Train the sentence-transformer + XGBoost intent classifier (baseline config).
 
-Encodes the raw support instructions into dense 384-d embeddings using
-`all-MiniLM-L6-v2`, then trains XGBoost on those features. Logs to MLflow
-under run_name="embeddings_xgb" so it sits side-by-side with the TF-IDF
-baseline in the same experiment for direct comparison.
+Encodes the support instructions into dense 384-d embeddings using
+`all-MiniLM-L6-v2`, trains XGBoost with the baseline hyperparameters from
+Settings, and logs the run to MLflow under run_name="embeddings_xgb" for
+side-by-side comparison with the TF-IDF baseline.
 
-Key differences from the TF-IDF pipeline:
-  - No leakage concern about the encoder itself: the sentence-transformer
-    is pre-trained and frozen. We just use its forward pass.
-  - Feature dimension is fixed at 384 (the model's output size), not a
-    hyperparameter like tfidf_max_features.
-  - Embedding is slow-ish (~1-2 min on CPU for 27k rows) but deterministic
-    given the same model and inputs, so the cost is paid once per run.
+Uses the shared embedding cache under data/processed/, so the first run
+pays the encoding cost once and subsequent runs (and Optuna trials) are
+fast.
 """
 
 from __future__ import annotations
@@ -19,28 +15,15 @@ from __future__ import annotations
 import joblib
 import mlflow
 import mlflow.xgboost
-import numpy as np
 import pandas as pd
 import xgboost as xgb
-from sentence_transformers import SentenceTransformer
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.preprocessing import LabelEncoder
 
 from src.config import settings
+from src.router._features import get_embeddings
 
-TEXT_COL = "instruction"
 LABEL_COL = "intent"
-
-
-def _embed(texts: list[str], encoder: SentenceTransformer) -> np.ndarray:
-    """Batch-encode a list of strings into a (N, 384) float32 matrix."""
-    return encoder.encode(
-        texts,
-        batch_size=settings.embedding_batch_size,
-        show_progress_bar=True,
-        convert_to_numpy=True,
-        normalize_embeddings=True,  # L2-normalize so cosine ~ dot-product
-    )
 
 
 def train_embeddings() -> None:
@@ -53,13 +36,8 @@ def train_embeddings() -> None:
     y_train = label_encoder.transform(train_df[LABEL_COL])
     y_val = label_encoder.transform(val_df[LABEL_COL])
 
-    print(f"[train_emb] Loading encoder: {settings.embedding_model_name}")
-    encoder = SentenceTransformer(settings.embedding_model_name)
-
-    print("[train_emb] Encoding train split...")
-    X_train = _embed(train_df[TEXT_COL].tolist(), encoder)
-    print("[train_emb] Encoding val split...")
-    X_val = _embed(val_df[TEXT_COL].tolist(), encoder)
+    X_train = get_embeddings("train")
+    X_val = get_embeddings("val")
 
     settings.models_dir.mkdir(parents=True, exist_ok=True)
     joblib.dump(label_encoder, settings.label_encoder_path)

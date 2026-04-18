@@ -23,6 +23,7 @@ dependencies = [
     "mlflow",
     "joblib",
     "sentence-transformers",
+    "optuna",
     # Agentic framework
     "langgraph",
     "langchain-core",
