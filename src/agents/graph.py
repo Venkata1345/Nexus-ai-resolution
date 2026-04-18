@@ -1,10 +1,11 @@
-from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, StateGraph
 
-from src.agents.state import NexusState
-from src.agents.router import predict_intent_node
-from src.agents.workers import shipping_node, billing_node
 from src.agents.agent import generate_response_node
+from src.agents.router import predict_intent_node
+from src.agents.state import NexusState
+from src.agents.workers import billing_node, shipping_node
+
 
 def supervisor_node(state: NexusState):
     """
@@ -12,21 +13,27 @@ def supervisor_node(state: NexusState):
     """
     print("\n[Supervisor] Analyzing intent to delegate...")
     intent = state.get("intent")
-    
+
     if intent in ["track_order"]:
         assignee = "shipping"
     # --- FIXED: Added 'track_refund' to the billing routing ---
     elif intent in ["get_refund", "cancel_order", "check_invoices", "track_refund"]:
         assignee = "billing"
     else:
-        assignee = "generator" 
-        
+        assignee = "generator"
+
     print(f"[Supervisor] Delegating to: {assignee}")
     return {"current_assignee": assignee}
 
+
 def route_to_worker(state: NexusState):
     """CONDITIONAL EDGE: Reads the assignee and routes the graph."""
-    return f"{state.get('current_assignee')}_worker" if state.get("current_assignee") != "generator" else "generator"
+    return (
+        f"{state.get('current_assignee')}_worker"
+        if state.get("current_assignee") != "generator"
+        else "generator"
+    )
+
 
 # 1. Initialize Graph
 workflow = StateGraph(NexusState)
@@ -49,8 +56,8 @@ workflow.add_conditional_edges(
     {
         "shipping_worker": "shipping_worker",
         "billing_worker": "billing_worker",
-        "generator": "generator"
-    }
+        "generator": "generator",
+    },
 )
 
 # After workers finish looking up data, they always go to the generator to draft the email
@@ -65,5 +72,5 @@ memory = MemorySaver()
 nexus_app = workflow.compile(
     checkpointer=memory,
     # SECURITY FEATURE: The graph will completely halt right before executing this node
-    interrupt_before=["billing_worker"] 
+    interrupt_before=["billing_worker"],
 )
