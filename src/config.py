@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # -------- Paths --------
     project_root: Path = PROJECT_ROOT
     raw_data_path: Path = PROJECT_ROOT / "data" / "raw" / "bitext_support_data.csv"
+    processed_data_dir: Path = PROJECT_ROOT / "data" / "processed"
     models_dir: Path = PROJECT_ROOT / "models"
 
     # -------- MLflow --------
@@ -36,13 +37,17 @@ class Settings(BaseSettings):
     mlflow_experiment_name: str = "nexus_intent_classification"
     mlflow_model_artifact_name: str = "xgboost_intent_model"
 
-    # -------- Training hyperparameters --------
+    # -------- Data split --------
+    # 3-way stratified split. Train gets what's left after val + test.
+    val_fraction: float = 0.15
+    test_fraction: float = 0.15
+    random_seed: int = 42
+
+    # -------- Training hyperparameters (baseline defaults; Optuna tunes these) --------
     tfidf_max_features: int = 5000
     xgb_max_depth: int = 6
     xgb_learning_rate: float = 0.1
     xgb_n_estimators: int = 100
-    train_test_split_ratio: float = 0.2
-    random_seed: int = 42
 
     # -------- LLM --------
     gemini_model: str = "gemini-3.1-flash-lite-preview"
@@ -58,6 +63,18 @@ class Settings(BaseSettings):
     @property
     def label_encoder_path(self) -> Path:
         return self.models_dir / "label_encoder.pkl"
+
+    @property
+    def train_csv_path(self) -> Path:
+        return self.processed_data_dir / "train.csv"
+
+    @property
+    def val_csv_path(self) -> Path:
+        return self.processed_data_dir / "val.csv"
+
+    @property
+    def test_csv_path(self) -> Path:
+        return self.processed_data_dir / "test.csv"
 
 
 @lru_cache(maxsize=1)

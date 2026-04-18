@@ -35,7 +35,7 @@ def train_model():
     X_train, X_test, y_train, y_test = train_test_split(
         X_vec,
         y_enc,
-        test_size=settings.train_test_split_ratio,
+        test_size=settings.test_fraction,
         random_state=settings.random_seed,
     )
 

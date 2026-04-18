@@ -54,6 +54,9 @@ mlflow.db-journal
 models/*.pkl
 models/*.joblib
 models/*.ubj
+# Processed data is a derived artifact of the raw CSV + split params;
+# DVC will track it, never git.
+data/processed/
 
 # ---------- DVC ----------
 # NOTE: .dvc/ folder IS committed (config, .gitignore, etc.)
