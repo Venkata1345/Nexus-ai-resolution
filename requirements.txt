@@ -8,6 +8,10 @@ joblib
 sentence-transformers
 # Hyperparameter tuning
 optuna
+# Pipeline + data versioning
+dvc
+# For confusion matrix figure
+matplotlib
 
 # --- Phase 2: Agentic Framework ---
 langgraph

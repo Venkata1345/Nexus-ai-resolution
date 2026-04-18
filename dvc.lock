@@ -1,0 +1,217 @@
+schema: '2.0'
+stages:
+  preprocess:
+    cmd: python -m src.router.preprocess
+    deps:
+    - path: data/raw/bitext_support_data.csv
+      hash: md5
+      md5: 2c584c473a12003b38d5d11cec4c8593
+      size: 19229347
+    - path: src/config.py
+      hash: md5
+      md5: f6fed624944dac70f0a694177b607a46
+      size: 3992
+    - path: src/router/preprocess.py
+      hash: md5
+      md5: 660af891a5149f62c36fc29c9a1c61db
+      size: 4603
+    outs:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: fab2a97f2fb528e55d10b92c3f44729a
+      size: 2878508
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 7415b2044dc7b1dc474c9f13ea05b0f9
+      size: 13458490
+    - path: data/processed/val.csv
+      hash: md5
+      md5: 8f62722f4d16017ae88d1906770f6ea8
+      size: 2892437
+  embed:
+    cmd: python -m src.router.embed
+    deps:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: fab2a97f2fb528e55d10b92c3f44729a
+      size: 2878508
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 7415b2044dc7b1dc474c9f13ea05b0f9
+      size: 13458490
+    - path: data/processed/val.csv
+      hash: md5
+      md5: 8f62722f4d16017ae88d1906770f6ea8
+      size: 2892437
+    - path: src/config.py
+      hash: md5
+      md5: f6fed624944dac70f0a694177b607a46
+      size: 3992
+    - path: src/router/_features.py
+      hash: md5
+      md5: 31658de87a8ab2990c9263879d0463e5
+      size: 2305
+    - path: src/router/embed.py
+      hash: md5
+      md5: 3cd263db8f804236ff69ba70b569d48f
+      size: 501
+    outs:
+    - path: data/processed/test_embeddings.npy
+      hash: md5
+      md5: 24b8572482e9821cda0a642696a8abb1
+      size: 6191744
+    - path: data/processed/train_embeddings.npy
+      hash: md5
+      md5: a5e8c8ee847929ac85ead3cee2c899e3
+      size: 28892288
+    - path: data/processed/val_embeddings.npy
+      hash: md5
+      md5: 1d4902f69ac5603a8d556902db13c485
+      size: 6191744
+  train_tfidf:
+    cmd: python -m src.router.train_tfidf
+    deps:
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 7415b2044dc7b1dc474c9f13ea05b0f9
+      size: 13458490
+    - path: data/processed/val.csv
+      hash: md5
+      md5: 8f62722f4d16017ae88d1906770f6ea8
+      size: 2892437
+    - path: src/config.py
+      hash: md5
+      md5: f6fed624944dac70f0a694177b607a46
+      size: 3992
+    - path: src/router/train_tfidf.py
+      hash: md5
+      md5: adff27879748808d115b1b4065e526a6
+      size: 3304
+    outs:
+    - path: models/label_encoder.pkl
+      hash: md5
+      md5: 58ce1eef2b7b99a32d7c1046beb0b017
+      size: 970
+    - path: models/tfidf_vectorizer.pkl
+      hash: md5
+      md5: 1bdfd659c165db75f06e15d8f6bd2286
+      size: 87687
+  train_embeddings:
+    cmd: python -m src.router.train_embeddings
+    deps:
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 7415b2044dc7b1dc474c9f13ea05b0f9
+      size: 13458490
+    - path: data/processed/train_embeddings.npy
+      hash: md5
+      md5: a5e8c8ee847929ac85ead3cee2c899e3
+      size: 28892288
+    - path: data/processed/val.csv
+      hash: md5
+      md5: 8f62722f4d16017ae88d1906770f6ea8
+      size: 2892437
+    - path: data/processed/val_embeddings.npy
+      hash: md5
+      md5: 1d4902f69ac5603a8d556902db13c485
+      size: 6191744
+    - path: src/config.py
+      hash: md5
+      md5: f6fed624944dac70f0a694177b607a46
+      size: 3992
+    - path: src/router/train_embeddings.py
+      hash: md5
+      md5: 74ddc91289d13f9f1e9e15ef19b9a13c
+      size: 2981
+  tune:
+    cmd: python -m src.router.tune
+    deps:
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 7415b2044dc7b1dc474c9f13ea05b0f9
+      size: 13458490
+    - path: data/processed/train_embeddings.npy
+      hash: md5
+      md5: a5e8c8ee847929ac85ead3cee2c899e3
+      size: 28892288
+    - path: data/processed/val.csv
+      hash: md5
+      md5: 8f62722f4d16017ae88d1906770f6ea8
+      size: 2892437
+    - path: data/processed/val_embeddings.npy
+      hash: md5
+      md5: 1d4902f69ac5603a8d556902db13c485
+      size: 6191744
+    - path: src/config.py
+      hash: md5
+      md5: f6fed624944dac70f0a694177b607a46
+      size: 3992
+    - path: src/router/_features.py
+      hash: md5
+      md5: 31658de87a8ab2990c9263879d0463e5
+      size: 2305
+    - path: src/router/tune.py
+      hash: md5
+      md5: 7ec9c3a759055282444732e29e0be102
+      size: 5552
+  cross_validate:
+    cmd: python -m src.router.cross_validate
+    deps:
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 7415b2044dc7b1dc474c9f13ea05b0f9
+      size: 13458490
+    - path: data/processed/train_embeddings.npy
+      hash: md5
+      md5: a5e8c8ee847929ac85ead3cee2c899e3
+      size: 28892288
+    - path: data/processed/val.csv
+      hash: md5
+      md5: 8f62722f4d16017ae88d1906770f6ea8
+      size: 2892437
+    - path: data/processed/val_embeddings.npy
+      hash: md5
+      md5: 1d4902f69ac5603a8d556902db13c485
+      size: 6191744
+    - path: src/config.py
+      hash: md5
+      md5: f6fed624944dac70f0a694177b607a46
+      size: 3992
+    - path: src/router/cross_validate.py
+      hash: md5
+      md5: 61e79b8f39d4f7e1e814e95193dfe1c2
+      size: 4358
+  evaluate:
+    cmd: python -m src.router.evaluate
+    deps:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: fab2a97f2fb528e55d10b92c3f44729a
+      size: 2878508
+    - path: data/processed/test_embeddings.npy
+      hash: md5
+      md5: 24b8572482e9821cda0a642696a8abb1
+      size: 6191744
+    - path: models/label_encoder.pkl
+      hash: md5
+      md5: 58ce1eef2b7b99a32d7c1046beb0b017
+      size: 970
+    - path: src/config.py
+      hash: md5
+      md5: f6fed624944dac70f0a694177b607a46
+      size: 3992
+    - path: src/router/evaluate.py
+      hash: md5
+      md5: 154d67e1dee4ace9e41b24d6cae69ff2
+      size: 7331
+  register:
+    cmd: python -m src.router.register
+    deps:
+    - path: src/config.py
+      hash: md5
+      md5: f6fed624944dac70f0a694177b607a46
+      size: 3992
+    - path: src/router/register.py
+      hash: md5
+      md5: 5fc31945016a9310e4aaf9afafb308e2
+      size: 1970

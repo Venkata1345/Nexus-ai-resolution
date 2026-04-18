@@ -24,6 +24,8 @@ dependencies = [
     "joblib",
     "sentence-transformers",
     "optuna",
+    "dvc",
+    "matplotlib",
     # Agentic framework
     "langgraph",
     "langchain-core",

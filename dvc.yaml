@@ -1,0 +1,90 @@
+# DVC pipeline for the Nexus intent classifier.
+#
+# Run the whole thing with `dvc repro` -- DVC re-runs only the stages whose
+# inputs (deps) changed. Stage outputs (`outs`) are tracked by DVC and stay
+# out of git. MLflow runs/artifacts are NOT declared as outs because MLflow
+# manages its own store under mlruns/ -- DVC just runs the commands.
+
+stages:
+
+  preprocess:
+    cmd: python -m src.router.preprocess
+    deps:
+      - data/raw/bitext_support_data.csv
+      - src/router/preprocess.py
+      - src/config.py
+    outs:
+      - data/processed/train.csv
+      - data/processed/val.csv
+      - data/processed/test.csv
+
+  embed:
+    cmd: python -m src.router.embed
+    deps:
+      - data/processed/train.csv
+      - data/processed/val.csv
+      - data/processed/test.csv
+      - src/router/embed.py
+      - src/router/_features.py
+      - src/config.py
+    outs:
+      - data/processed/train_embeddings.npy
+      - data/processed/val_embeddings.npy
+      - data/processed/test_embeddings.npy
+
+  train_tfidf:
+    cmd: python -m src.router.train_tfidf
+    deps:
+      - data/processed/train.csv
+      - data/processed/val.csv
+      - src/router/train_tfidf.py
+      - src/config.py
+    outs:
+      - models/tfidf_vectorizer.pkl
+      - models/label_encoder.pkl
+
+  train_embeddings:
+    cmd: python -m src.router.train_embeddings
+    deps:
+      - data/processed/train.csv
+      - data/processed/val.csv
+      - data/processed/train_embeddings.npy
+      - data/processed/val_embeddings.npy
+      - src/router/train_embeddings.py
+      - src/config.py
+
+  tune:
+    cmd: python -m src.router.tune
+    deps:
+      - data/processed/train.csv
+      - data/processed/val.csv
+      - data/processed/train_embeddings.npy
+      - data/processed/val_embeddings.npy
+      - src/router/tune.py
+      - src/router/_features.py
+      - src/config.py
+
+  cross_validate:
+    cmd: python -m src.router.cross_validate
+    deps:
+      - data/processed/train.csv
+      - data/processed/val.csv
+      - data/processed/train_embeddings.npy
+      - data/processed/val_embeddings.npy
+      - src/router/cross_validate.py
+      - src/config.py
+
+  evaluate:
+    cmd: python -m src.router.evaluate
+    deps:
+      - data/processed/test.csv
+      - data/processed/test_embeddings.npy
+      - models/label_encoder.pkl
+      - src/router/evaluate.py
+      - src/config.py
+
+  register:
+    cmd: python -m src.router.register
+    deps:
+      - src/router/register.py
+      - src/config.py
