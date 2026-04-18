@@ -1,0 +1,18 @@
+# --- Phase 1: Machine Learning & MLOps ---
+xgboost
+scikit-learn
+pandas
+mlflow
+joblib
+
+# --- Phase 2: Agentic Framework ---
+langgraph
+langchain-core
+
+# LLM Providers (OpenAI & Google)
+langchain-openai
+langchain-google-genai
+
+# --- Utility ---
+# For loading the .env file securely
+python-dotenv
