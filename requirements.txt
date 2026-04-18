@@ -16,3 +16,5 @@ langchain-google-genai
 # --- Utility ---
 # For loading the .env file securely
 python-dotenv
+# Typed, centralized configuration (src/config.py)
+pydantic-settings

@@ -30,6 +30,7 @@ dependencies = [
     "langchain-google-genai",
     # Utilities
     "python-dotenv",
+    "pydantic-settings",
 ]
 
 # Optional dependency groups — install with `pip install -e ".[dev]"`.
