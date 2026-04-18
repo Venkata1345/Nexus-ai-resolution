@@ -11,12 +11,24 @@ label_encoder = joblib.load(settings.label_encoder_path)
 
 
 def load_latest_model():
-    """Dynamically fetches the most recently trained model from MLflow."""
+    """Fetch the most recent TF-IDF run from MLflow.
+
+    The experiment also contains embedding-based runs with a different
+    artifact name, so we filter by the `feature_type=tfidf` tag to guarantee
+    we load a run that actually has the expected artifact.
+    """
     experiment = mlflow.get_experiment_by_name(settings.mlflow_experiment_name)
 
     df_runs = mlflow.search_runs(
-        experiment_ids=[experiment.experiment_id], order_by=["start_time DESC"]
+        experiment_ids=[experiment.experiment_id],
+        filter_string="tags.feature_type = 'tfidf'",
+        order_by=["start_time DESC"],
     )
+    if df_runs.empty:
+        raise RuntimeError(
+            "No MLflow runs found with feature_type=tfidf. "
+            "Train the baseline first: `python -m src.router.train_tfidf`."
+        )
     latest_run_id = df_runs.iloc[0].run_id
 
     return mlflow.xgboost.load_model(f"runs:/{latest_run_id}/{settings.mlflow_model_artifact_name}")

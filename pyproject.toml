@@ -22,6 +22,7 @@ dependencies = [
     "pandas",
     "mlflow",
     "joblib",
+    "sentence-transformers",
     # Agentic framework
     "langgraph",
     "langchain-core",

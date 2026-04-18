@@ -4,6 +4,8 @@ scikit-learn
 pandas
 mlflow
 joblib
+# Sentence embedding encoder (brings in torch + transformers)
+sentence-transformers
 
 # --- Phase 2: Agentic Framework ---
 langgraph

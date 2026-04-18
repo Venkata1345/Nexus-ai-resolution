@@ -35,7 +35,13 @@ class Settings(BaseSettings):
     # -------- MLflow --------
     mlflow_tracking_uri: str = f"sqlite:///{PROJECT_ROOT / 'mlflow.db'}"
     mlflow_experiment_name: str = "nexus_intent_classification"
-    mlflow_model_artifact_name: str = "xgboost_intent_model"
+    # One artifact name per pipeline — easier to disambiguate in MLflow UI.
+    mlflow_model_artifact_name: str = "xgboost_intent_model"  # used by TF-IDF pipeline
+    mlflow_embedding_model_artifact_name: str = "xgboost_embedding_intent_model"
+
+    # -------- Embedding model --------
+    embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_batch_size: int = 64
 
     # -------- Data split --------
     # 3-way stratified split. Train gets what's left after val + test.
