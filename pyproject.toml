@@ -1,0 +1,77 @@
+# ============================================================
+# pyproject.toml — single source of truth for the Nexus project
+# Docs: PEP 621 (project metadata) + PEP 518 (build system)
+# ============================================================
+
+[project]
+name = "nexus"
+version = "0.1.0"
+description = "Hybrid ML + agentic customer support system with human-in-the-loop gating."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Venkata Abhishek Gullipalli" }]
+keywords = ["mlops", "langgraph", "xgboost", "customer-support", "agentic-ai"]
+
+# Runtime dependencies. Keep in sync with requirements.txt until we
+# fully migrate install flows to `pip install -e .` in later phases.
+dependencies = [
+    # ML & MLOps
+    "xgboost",
+    "scikit-learn",
+    "pandas",
+    "mlflow",
+    "joblib",
+    # Agentic framework
+    "langgraph",
+    "langchain-core",
+    # LLM providers
+    "langchain-openai",
+    "langchain-google-genai",
+    # Utilities
+    "python-dotenv",
+]
+
+# Optional dependency groups — install with `pip install -e ".[dev]"`.
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "mypy",
+    "pytest",
+    "pytest-cov",
+    "pre-commit",
+]
+
+# ------------------------------------------------------------
+# Ruff — linter + formatter (replaces flake8, black, isort, …)
+# ------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src"]
+
+# Folders ruff should never touch.
+extend-exclude = ["mlruns", "models", ".venv", "data/raw"]
+
+[tool.ruff.lint]
+# Rule sets enabled. Each code letter is a family:
+#   E/W = pycodestyle errors/warnings
+#   F   = pyflakes (unused imports, undefined names, …)
+#   I   = isort (import ordering)
+#   B   = flake8-bugbear (likely bugs)
+#   UP  = pyupgrade (modernize syntax)
+#   SIM = flake8-simplify (code simplifications)
+#   RUF = ruff-native rules
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
+
+# Codes we intentionally ignore:
+#   E501 — line too long (formatter handles wrapping where it can)
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+# Tell isort which packages are "first-party" so they group correctly.
+known-first-party = ["src"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
