@@ -49,6 +49,7 @@ def train_embeddings() -> None:
         mlflow.set_tag("feature_type", "embeddings")
         mlflow.set_tag("classifier", "xgboost")
         mlflow.set_tag("encoder", settings.embedding_model_name)
+        mlflow.set_tag("model_logged", "true")
 
         params = {
             "objective": "multi:softmax",

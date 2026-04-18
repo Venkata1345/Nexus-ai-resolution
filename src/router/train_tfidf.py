@@ -55,6 +55,7 @@ def train_tfidf() -> None:
     with mlflow.start_run(run_name="tfidf_xgb"):
         mlflow.set_tag("feature_type", "tfidf")
         mlflow.set_tag("classifier", "xgboost")
+        mlflow.set_tag("model_logged", "true")
 
         params = {
             "objective": "multi:softmax",

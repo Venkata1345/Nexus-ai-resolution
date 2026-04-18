@@ -13,22 +13,26 @@ encoder = SentenceTransformer(settings.embedding_model_name)
 
 
 def load_latest_model():
-    """Fetch the most recent embedding-based run from MLflow.
+    """Fetch the most recent embedding-based run that actually has a model.
 
-    Filter by `feature_type=embeddings` so we always load a run whose
-    artifact matches the sentence-transformer feature pipeline below.
+    Excludes Optuna trial children and evaluation-only runs, since neither
+    type logs a model artifact. Concept #6 (MLflow Model Registry) replaces
+    this filter with a proper @production alias lookup.
     """
     experiment = mlflow.get_experiment_by_name(settings.mlflow_experiment_name)
 
     df_runs = mlflow.search_runs(
         experiment_ids=[experiment.experiment_id],
-        filter_string="tags.feature_type = 'embeddings'",
+        filter_string=(
+            "tags.feature_type = 'embeddings' AND tags.model_logged = 'true'"
+        ),
         order_by=["start_time DESC"],
     )
     if df_runs.empty:
         raise RuntimeError(
-            "No MLflow runs found with feature_type=embeddings. "
-            "Train the embedding pipeline first: `python -m src.router.train_embeddings`."
+            "No MLflow runs found with feature_type=embeddings and a model artifact. "
+            "Train the embedding pipeline first: `python -m src.router.train_embeddings` "
+            "or `python -m src.router.tune`."
         )
     latest_run_id = df_runs.iloc[0].run_id
 

@@ -91,6 +91,7 @@ def tune() -> None:
         mlflow.set_tag("feature_type", "embeddings")
         mlflow.set_tag("classifier", "xgboost")
         mlflow.set_tag("tuning", "optuna")
+        mlflow.set_tag("model_logged", "true")
         mlflow.log_param("n_trials", settings.optuna_n_trials)
         mlflow.log_param("sampler", "TPE")
         mlflow.log_param("optimization_direction", "maximize val_f1_weighted")
