@@ -125,6 +125,9 @@ def tune() -> None:
         final_preds = final_model.predict(X_val)
         final_f1 = f1_score(y_val, final_preds, average="weighted")
         mlflow.log_metric("final_val_f1_weighted", final_f1)
+        # Also log under the canonical name so register.py and other consumers
+        # can compare across all model-bearing runs uniformly.
+        mlflow.log_metric("val_f1_weighted", final_f1)
         print(f"[tune] Retrain val_f1_weighted: {final_f1:.4f}")
 
         mlflow.xgboost.log_model(final_model, settings.mlflow_embedding_model_artifact_name)

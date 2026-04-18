@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     # One artifact name per pipeline — easier to disambiguate in MLflow UI.
     mlflow_model_artifact_name: str = "xgboost_intent_model"  # used by TF-IDF pipeline
     mlflow_embedding_model_artifact_name: str = "xgboost_embedding_intent_model"
+    # Model Registry: a single named entry whose @production alias is what
+    # the agent loads at runtime. Decoupled from any specific run id.
+    mlflow_registered_model_name: str = "nexus_intent_classifier"
+    mlflow_production_alias: str = "production"
 
     # -------- Embedding model --------
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"

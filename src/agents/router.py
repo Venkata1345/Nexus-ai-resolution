@@ -12,36 +12,26 @@ label_encoder = joblib.load(settings.label_encoder_path)
 encoder = SentenceTransformer(settings.embedding_model_name)
 
 
-def load_latest_model():
-    """Fetch the most recent embedding-based run that actually has a model.
+def load_production_model():
+    """Load the model currently aliased @production in the MLflow Model Registry.
 
-    Excludes Optuna trial children and evaluation-only runs, since neither
-    type logs a model artifact. Concept #6 (MLflow Model Registry) replaces
-    this filter with a proper @production alias lookup.
+    Promotion to @production is done by `python -m src.router.register`. The
+    agent never references run IDs directly, so swapping in a new model is a
+    one-liner and no code changes here.
     """
-    experiment = mlflow.get_experiment_by_name(settings.mlflow_experiment_name)
-
-    df_runs = mlflow.search_runs(
-        experiment_ids=[experiment.experiment_id],
-        filter_string=(
-            "tags.feature_type = 'embeddings' AND tags.model_logged = 'true'"
-        ),
-        order_by=["start_time DESC"],
-    )
-    if df_runs.empty:
+    uri = f"models:/{settings.mlflow_registered_model_name}@{settings.mlflow_production_alias}"
+    try:
+        return mlflow.xgboost.load_model(uri)
+    except mlflow.exceptions.MlflowException as exc:
         raise RuntimeError(
-            "No MLflow runs found with feature_type=embeddings and a model artifact. "
-            "Train the embedding pipeline first: `python -m src.router.train_embeddings` "
-            "or `python -m src.router.tune`."
-        )
-    latest_run_id = df_runs.iloc[0].run_id
-
-    return mlflow.xgboost.load_model(
-        f"runs:/{latest_run_id}/{settings.mlflow_embedding_model_artifact_name}"
-    )
+            f"No model aliased @{settings.mlflow_production_alias} for "
+            f"{settings.mlflow_registered_model_name!r}. "
+            f"Train and register one first: "
+            f"`python -m src.router.tune && python -m src.router.register`."
+        ) from exc
 
 
-intent_model = load_latest_model()
+intent_model = load_production_model()
 
 
 def predict_intent_node(state: NexusState):

@@ -109,7 +109,7 @@ def cross_validate() -> None:
         mlflow.log_metric("cv_std_accuracy", std_acc)
         mlflow.log_metric("cv_mean_f1_weighted", mean_f1)
         mlflow.log_metric("cv_std_f1_weighted", std_f1)
-        for i, (a, f) in enumerate(zip(fold_accs, fold_f1s), start=1):
+        for i, (a, f) in enumerate(zip(fold_accs, fold_f1s, strict=True), start=1):
             mlflow.log_metric(f"fold_{i}_accuracy", a)
             mlflow.log_metric(f"fold_{i}_f1_weighted", f)
 
