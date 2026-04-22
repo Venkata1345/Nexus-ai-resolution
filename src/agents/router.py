@@ -35,7 +35,7 @@ intent_model = load_production_model()
 
 
 def predict_intent_node(state: NexusState):
-    """Predict the customer's intent from the latest message and store it in state."""
+    """Predict intent + confidence from the latest message and store both in state."""
     messages = state.get("messages", [])
     latest_user_text = messages[-1].content
 
@@ -45,11 +45,18 @@ def predict_intent_node(state: NexusState):
         convert_to_numpy=True,
         normalize_embeddings=True,
     )
-    prediction_encoded = intent_model.predict(vec_input)
-    predicted_intent = label_encoder.inverse_transform(prediction_encoded)[0]
 
-    print(f"\n[Router Node] Analyzed ticket. Predicted Intent: '{predicted_intent}'")
-    return {"intent": predicted_intent}
+    # predict_proba returns per-class probabilities; we take the argmax and
+    # its probability as the "confidence" the escalation gate checks.
+    probs = intent_model.predict_proba(vec_input)[0]
+    top_idx = int(probs.argmax())
+    predicted_intent = label_encoder.inverse_transform([top_idx])[0]
+    confidence = float(probs[top_idx])
+
+    print(
+        f"\n[Router Node] Analyzed ticket. Intent='{predicted_intent}'  confidence={confidence:.3f}"
+    )
+    return {"intent": predicted_intent, "intent_confidence": confidence}
 
 
 def route_after_prediction(state: NexusState):

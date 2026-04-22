@@ -29,14 +29,14 @@ def run_nexus():
     next_step = snapshot.next
 
     if "billing_worker" in next_step:
-        print("\n🛑 GRAPH PAUSED: HUMAN-IN-THE-LOOP REQUIRED")
+        print("\n[!] GRAPH PAUSED: HUMAN-IN-THE-LOOP REQUIRED")
         print("A financial action has been requested and paused by the Checkpointer.")
 
         # 4. The Human Manager manually approves the transaction by updating the state
         approval = input("\nType 'approve' to authorize this refund: ")
 
         if approval.lower() == "approve":
-            print("\n✅ Manager approval granted. Injecting into state and resuming graph...")
+            print("\n[OK] Manager approval granted. Injecting into state and resuming graph...")
             nexus_app.update_state(config, {"manager_approved": True})
 
             # Resume the graph from where it paused with None

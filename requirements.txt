@@ -8,6 +8,8 @@ joblib
 sentence-transformers
 # Hyperparameter tuning
 optuna
+# Vector store for RAG
+chromadb
 # Pipeline + data versioning
 dvc
 # For confusion matrix figure

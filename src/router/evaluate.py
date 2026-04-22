@@ -53,9 +53,7 @@ def _load_latest_embedding_model():
     experiment = mlflow.get_experiment_by_name(settings.mlflow_experiment_name)
     runs = mlflow.search_runs(
         experiment_ids=[experiment.experiment_id],
-        filter_string=(
-            "tags.feature_type = 'embeddings' AND tags.model_logged = 'true'"
-        ),
+        filter_string=("tags.feature_type = 'embeddings' AND tags.model_logged = 'true'"),
         order_by=["start_time DESC"],
     )
     if runs.empty:
@@ -75,17 +73,13 @@ def _benchmark_single_latency(
 
     # Warmup — the first calls pay JIT and allocator costs we shouldn't include.
     for i in sample_idx[:N_WARMUP_CALLS]:
-        emb = encoder.encode(
-            [texts[i]], convert_to_numpy=True, normalize_embeddings=True
-        )
+        emb = encoder.encode([texts[i]], convert_to_numpy=True, normalize_embeddings=True)
         model.predict(emb)
 
     timings_ms: list[float] = []
     for i in sample_idx[N_WARMUP_CALLS:]:
         start = time.perf_counter()
-        emb = encoder.encode(
-            [texts[i]], convert_to_numpy=True, normalize_embeddings=True
-        )
+        emb = encoder.encode([texts[i]], convert_to_numpy=True, normalize_embeddings=True)
         model.predict(emb)
         timings_ms.append((time.perf_counter() - start) * 1000)
 
@@ -174,12 +168,16 @@ def evaluate() -> None:
     batch_stats = _benchmark_batch_throughput(test_texts, encoder, model)
 
     print(f"[evaluate] Single-request mean: {single_stats['latency_ms_mean']:.2f} ms")
-    print(f"[evaluate] Single-request p50/p95/p99: "
-          f"{single_stats['latency_ms_p50']:.2f} / "
-          f"{single_stats['latency_ms_p95']:.2f} / "
-          f"{single_stats['latency_ms_p99']:.2f} ms")
-    print(f"[evaluate] Batch-{BATCH_SIZE} throughput: "
-          f"{batch_stats['throughput_tickets_per_sec']:.1f} tickets/sec")
+    print(
+        f"[evaluate] Single-request p50/p95/p99: "
+        f"{single_stats['latency_ms_p50']:.2f} / "
+        f"{single_stats['latency_ms_p95']:.2f} / "
+        f"{single_stats['latency_ms_p99']:.2f} ms"
+    )
+    print(
+        f"[evaluate] Batch-{BATCH_SIZE} throughput: "
+        f"{batch_stats['throughput_tickets_per_sec']:.1f} tickets/sec"
+    )
 
     # ---------- MLflow logging ----------
     with mlflow.start_run(run_name="test_evaluation_embeddings_xgb"):

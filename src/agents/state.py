@@ -11,6 +11,9 @@ class NexusState(TypedDict):
     user_input: str
     # The classification predicted by our Phase 1 XGBoost model
     intent: str | None
+    # XGBoost's probability for the winning class. Used by the escalation
+    # gate to decide whether we're confident enough to auto-respond.
+    intent_confidence: float | None
 
     current_assignee: str | None
 

@@ -47,6 +47,16 @@ class Settings(BaseSettings):
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_batch_size: int = 64
 
+    # -------- RAG knowledge base (Chroma) --------
+    kb_dir: Path = PROJECT_ROOT / "data" / "kb"
+    kb_collection_name: str = "nexus_support_faqs"
+    kb_top_k: int = 3
+
+    # -------- Routing --------
+    # If the XGBoost confidence for the top intent is below this, the graph
+    # escalates to a human instead of dispatching to a worker.
+    intent_confidence_threshold: float = 0.3
+
     # -------- Hyperparameter tuning --------
     optuna_n_trials: int = 20
 

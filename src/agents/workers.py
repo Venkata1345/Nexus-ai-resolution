@@ -45,7 +45,7 @@ def billing_node(state: NexusState):
     if intent in ["get_refund", "cancel_order"]:
         if not state.get("manager_approved", False):
             # If the human hasn't approved it yet, we block the action.
-            print("[Billing Worker] 🛑 HALT: Manager approval required for financial actions.")
+            print("[Billing Worker] HALT: Manager approval required for financial actions.")
             warning = SystemMessage(
                 content="Billing Tool Result: TRANSACTION BLOCKED. Awaiting human manager approval to process refund."
             )
@@ -53,7 +53,7 @@ def billing_node(state: NexusState):
 
         else:
             # If the human flipped the flag, we process the money!
-            print("[Billing Worker] ✅ SUCCESS: Human approval detected. Processing funds.")
+            print("[Billing Worker] SUCCESS: Human approval detected. Processing funds.")
             info = BILLING_DB.get(intent, "Transaction complete.")
             success = SystemMessage(content=f"Billing Tool Result: {info}")
             return {"messages": [success]}
