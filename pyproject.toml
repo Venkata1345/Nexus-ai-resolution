@@ -88,3 +88,35 @@ known-first-party = ["src"]
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+# ------------------------------------------------------------
+# Pytest
+# ------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q --strict-markers"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+omit = [
+    "src/router/train_tfidf.py",
+    "src/router/train_embeddings.py",
+    "src/router/tune.py",
+    "src/router/cross_validate.py",
+    "src/router/evaluate.py",
+    "src/router/register.py",
+    "src/router/compare.py",
+    "src/router/embed.py",
+    "src/agents/kb_build.py",
+    "src/agents/agent.py",
+    "src/agents/retriever.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
