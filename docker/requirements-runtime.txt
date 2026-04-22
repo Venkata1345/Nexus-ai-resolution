@@ -1,0 +1,37 @@
+# Runtime-only dependencies for the API image.
+#
+# The full `requirements.txt` (used for dev + training) pulls in MLflow,
+# Optuna, DVC, matplotlib, Streamlit, etc. -- those add ~2 GB we don't
+# need at inference time, when the agent is loading from the flat bundle.
+#
+# Keep this list in sync when you add new RUNTIME imports.
+# Training / evaluation scripts stay in requirements.txt.
+
+# --- Classifier ---
+# xgboost-cpu avoids the NVIDIA CUDA bundle (~400 MB).
+xgboost-cpu
+joblib
+scikit-learn
+
+# --- Embeddings ---
+# torch CPU-only wheel is installed separately with --index-url.
+sentence-transformers
+
+# --- RAG ---
+chromadb
+
+# --- Agentic framework ---
+langgraph
+langchain-core
+langchain-google-genai
+
+# --- API ---
+fastapi
+uvicorn[standard]
+slowapi
+structlog
+httpx
+
+# --- Config / secrets ---
+pydantic-settings
+python-dotenv

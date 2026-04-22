@@ -33,19 +33,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --upgrade pip && \
     pip install --index-url https://download.pytorch.org/whl/cpu torch==2.5.1
 
-# Copy requirements and install. This layer caches as long as requirements.txt
-# doesn't change, so app-code edits don't trigger a re-install.
-COPY requirements.txt /build/
-RUN pip install -r requirements.txt
+# Copy the runtime-only deps file. Separate from requirements.txt so training
+# / eval / DVC tooling doesn't bloat the image.
+COPY docker/requirements-runtime.txt /build/requirements.txt
+RUN pip install -r /build/requirements.txt
 
 # ---------- runtime stage ----------
 FROM python:${PYTHON_VERSION} AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    HF_HOME=/app/.hf-cache \
-    TRANSFORMERS_OFFLINE=1 \
-    HF_HUB_OFFLINE=1
+    HF_HOME=/app/.hf-cache
 
 # Minimal runtime deps only (libgomp is required by xgboost).
 RUN apt-get update && apt-get install -y --no-install-recommends \

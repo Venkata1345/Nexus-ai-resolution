@@ -21,7 +21,8 @@ load_dotenv()
 
 from contextlib import asynccontextmanager  # noqa: E402
 
-import mlflow  # noqa: E402
+import json  # noqa: E402
+
 from fastapi import FastAPI, HTTPException, Request  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage  # noqa: E402
@@ -190,6 +191,26 @@ def health() -> HealthResponse:
 
 @app.get("/model/info", response_model=ModelInfoResponse)
 def model_info() -> ModelInfoResponse:
+    """Return model metadata from the bundle if present, else from MLflow.
+
+    Deployed containers ship a `bundle/metadata.json` produced by
+    `python -m src.router.bundle`, which lets us answer this endpoint without
+    needing the mlflow client (or the SQLite DB) at runtime.
+    """
+    bundle_meta = settings.bundle_dir / "metadata.json"
+    if bundle_meta.exists():
+        meta = json.loads(bundle_meta.read_text())
+        return ModelInfoResponse(
+            registered_name=meta["registered_name"],
+            version=str(meta["version"]),
+            alias=meta["alias"],
+            run_id=meta.get("run_id"),
+            metrics=meta.get("metrics", {}),
+        )
+
+    # Local-dev fallback: pull live from MLflow.
+    import mlflow
+
     client = mlflow.tracking.MlflowClient(tracking_uri=settings.mlflow_tracking_uri)
     try:
         mv = client.get_model_version_by_alias(
