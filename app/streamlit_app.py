@@ -11,7 +11,9 @@ Assumes the API is up at settings.api_host:settings.api_port.
 
 from __future__ import annotations
 
+import json
 import uuid
+from collections.abc import Iterator
 from typing import Any
 
 import httpx
@@ -91,6 +93,39 @@ def _get(path: str) -> dict[str, Any]:
 @st.cache_data(ttl=60)
 def get_model_info() -> dict:
     return _get("/model/info")
+
+
+def _stream_sse(path: str, payload: dict, sink: dict) -> Iterator[str]:
+    """Iterator suitable for `st.write_stream`: yields LLM text as it arrives.
+
+    Non-token events (`node`, `done`) are captured into `sink` as side effects
+    so the caller can finalize UI state after the stream completes.
+    """
+    sink["trace"] = []
+    sink["final"] = None
+    try:
+        with httpx.stream(
+            "POST", f"{API_BASE}{path}", json=payload, timeout=120
+        ) as response:
+            response.raise_for_status()
+            for line in response.iter_lines():
+                if not line or not line.startswith("data:"):
+                    continue
+                try:
+                    data = json.loads(line[len("data:") :].strip())
+                except json.JSONDecodeError:
+                    continue
+                kind = data.get("event")
+                if kind == "token":
+                    yield data.get("text", "")
+                elif kind == "node":
+                    sink["trace"].append(data)
+                elif kind == "done":
+                    sink["final"] = data
+    except httpx.HTTPStatusError as e:
+        st.error(f"API error {e.response.status_code}: {e.response.text}")
+    except httpx.HTTPError as e:
+        st.error(f"API unreachable: {e}")
 
 
 # -----------------------------------------------------------------------------
@@ -182,6 +217,25 @@ for msg in active["messages"]:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
+def _finalize_turn(full_text: str, sink: dict) -> None:
+    """Update session state after a stream completes."""
+    final = sink.get("final") or {}
+    trace = sink.get("trace", [])
+    active["last_response"] = {
+        "status": final.get("status", "complete"),
+        "intent": final.get("intent"),
+        "intent_confidence": final.get("intent_confidence"),
+        "current_assignee": final.get("current_assignee"),
+        "paused_before": final.get("paused_before"),
+        "trace": trace,
+    }
+    # Prefer the streamed text; fall back to any `reply` on the final frame
+    # (approve-when-already-complete path emits no tokens, just the reply).
+    text = full_text or final.get("reply") or ""
+    if final.get("status") != "awaiting_approval" and text:
+        active["messages"].append({"role": "assistant", "content": text})
+
+
 # If the backend paused at the billing worker, surface an approve button.
 resp = active["last_response"] or {}
 if resp.get("status") == "awaiting_approval":
@@ -192,16 +246,17 @@ if resp.get("status") == "awaiting_approval":
     cols = st.columns([1, 1, 3])
     with cols[0]:
         if st.button("Approve", type="primary"):
-            approved = _post(
-                f"/chat/{st.session_state.active_thread}/approve",
-                {"approved": True},
-            )
-            if approved:
-                active["last_response"] = approved
-                active["messages"].append(
-                    {"role": "assistant", "content": approved.get("reply", "")}
+            with st.chat_message("assistant"):
+                sink: dict = {}
+                full_text = st.write_stream(
+                    _stream_sse(
+                        f"/chat/{st.session_state.active_thread}/approve/stream",
+                        {"approved": True},
+                        sink,
+                    )
                 )
-                st.rerun()
+            _finalize_turn(full_text or "", sink)
+            st.rerun()
     with cols[1]:
         if st.button("Reject"):
             # No backend reject flow yet; just post a canned message client-side.
@@ -216,12 +271,16 @@ if resp.get("status") == "awaiting_approval":
 
 if prompt := st.chat_input("Type your support request..."):
     active["messages"].append({"role": "user", "content": prompt})
-    data = _post(
-        "/chat",
-        {"thread_id": st.session_state.active_thread, "message": prompt},
-    )
-    if data:
-        active["last_response"] = data
-        if data.get("status") != "awaiting_approval" and data.get("reply"):
-            active["messages"].append({"role": "assistant", "content": data["reply"]})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    with st.chat_message("assistant"):
+        sink = {}
+        full_text = st.write_stream(
+            _stream_sse(
+                "/chat/stream",
+                {"thread_id": st.session_state.active_thread, "message": prompt},
+                sink,
+            )
+        )
+    _finalize_turn(full_text or "", sink)
     st.rerun()

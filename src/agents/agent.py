@@ -31,7 +31,14 @@ def generate_response_node(state: NexusState):
     )
 
     conversation_thread = [system_instruction, *state["messages"]]
-    response = llm.invoke(conversation_thread)
+
+    # Use .stream() so LangGraph can intercept tokens via stream_mode='messages'
+    # and forward them to the API's SSE stream. We accumulate the chunks here
+    # so the node still returns a complete AIMessage to graph state.
+    chunks = list(llm.stream(conversation_thread))
+    response = chunks[0]
+    for c in chunks[1:]:
+        response = response + c
 
     print("[Generator] Response drafted successfully.")
     return {"messages": [response]}

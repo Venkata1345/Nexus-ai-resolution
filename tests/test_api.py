@@ -139,10 +139,25 @@ def test_chat_pauses_at_billing_and_approval_resumes(client):
     assert client.fake._manager_approved is True
 
 
-def test_approve_rejects_when_not_paused(client):
-    client.fake._next = ()  # not paused
+def test_approve_404_for_unknown_thread(client):
+    # No history, no pause — this thread has never been seen.
+    client.fake._next = ()
+    client.fake._messages = []
     r = client.post("/chat/nonexistent/approve", json={"approved": True})
-    assert r.status_code == 409
+    assert r.status_code == 404
+
+
+def test_approve_is_idempotent_on_completed_thread(client):
+    # Thread already completed (e.g. a duplicate click arrived late).
+    client.fake._next = ()
+    client.fake._messages = [
+        HumanMessage(content="refund me"),
+        AIMessage(content="final reply"),
+    ]
+    r = client.post("/chat/t-done/approve", json={"approved": True})
+    assert r.status_code == 200
+    assert r.json()["status"] == "complete"
+    assert r.json()["reply"] == "final reply"
 
 
 def test_approve_rejection_flow_not_yet_implemented(client):

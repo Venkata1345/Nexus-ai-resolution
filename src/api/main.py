@@ -28,7 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
-from starlette.responses import JSONResponse  # noqa: E402
+from starlette.responses import JSONResponse, StreamingResponse  # noqa: E402
 
 from src.agents.graph import nexus_app  # noqa: E402
 from src.api.deps import limiter, logger  # noqa: E402
@@ -270,30 +270,45 @@ def chat(request: Request, body: ChatRequest) -> ChatResponse:
 @app.post("/chat/{thread_id}/approve", response_model=ChatResponse)
 @limiter.limit(settings.api_rate_limit)
 def approve(request: Request, thread_id: str, body: ApproveRequest) -> ChatResponse:
-    config = _thread_config(thread_id)
-    snapshot = nexus_app.get_state(config)
+    """Approve a paused billing action and resume the graph.
 
-    if "billing_worker" not in (snapshot.next or ()):
-        raise HTTPException(
-            status_code=409,
-            detail=f"Thread {thread_id} is not paused at a billing approval step.",
-        )
+    Idempotent: if the thread is no longer paused (e.g. an earlier duplicate
+    click already drove it to completion), we return the current state with
+    the final reply instead of 409. This makes Streamlit's "click again
+    while the LLM is still drafting" behaviour harmless.
 
+    Returns 404 only if we've never seen this thread at all.
+    """
     if not body.approved:
         # Future: add an explicit "reject" path that routes to escalation.
         raise HTTPException(status_code=501, detail="Rejection flow not yet implemented.")
 
-    nexus_app.update_state(config, {"manager_approved": True})
+    config = _thread_config(thread_id)
+    snapshot = nexus_app.get_state(config)
+
+    is_paused = "billing_worker" in (snapshot.next or ())
+    has_history = bool((snapshot.values or {}).get("messages"))
+
+    if not is_paused and not has_history:
+        raise HTTPException(status_code=404, detail=f"Unknown thread {thread_id}.")
 
     events: list[dict] = []
-    for ev in nexus_app.stream(None, config, stream_mode="updates"):
-        events.append(ev)
+    if is_paused:
+        nexus_app.update_state(config, {"manager_approved": True})
+        for ev in nexus_app.stream(None, config, stream_mode="updates"):
+            events.append(ev)
+        snapshot = nexus_app.get_state(config)
 
-    snapshot = nexus_app.get_state(config)
     status, paused_before = _derive_status(snapshot)
     telemetry = _snapshot_telemetry(snapshot)
 
-    logger.info("chat.approve", thread_id=thread_id, status=status, intent=telemetry["intent"])
+    logger.info(
+        "chat.approve",
+        thread_id=thread_id,
+        status=status,
+        intent=telemetry["intent"],
+        was_paused=is_paused,
+    )
 
     return ChatResponse(
         thread_id=thread_id,
@@ -312,4 +327,127 @@ def history(thread_id: str) -> HistoryResponse:
     return HistoryResponse(
         thread_id=thread_id,
         messages=_visible_messages(values.get("messages") or []),
+    )
+
+
+# =============================================================================
+# Streaming endpoints (Server-Sent Events)
+# =============================================================================
+
+def _sse(event_obj: dict) -> str:
+    """Format a dict as a single SSE `data: ...\\n\\n` frame."""
+    return f"data: {json.dumps(event_obj)}\n\n"
+
+
+def _stream_graph(inputs: dict | None, config: dict):
+    """Drive the graph and yield SSE frames for node events + LLM tokens.
+
+    Uses LangGraph's multi-mode streaming so we get both node-level state
+    updates AND token-by-token message chunks from the generator.
+    """
+    node_events: list[dict] = []
+
+    for chunk in nexus_app.stream(
+        inputs, config, stream_mode=["updates", "messages"]
+    ):
+        mode, payload = chunk
+
+        if mode == "updates":
+            for node, delta in payload.items():
+                if isinstance(delta, dict):
+                    preview = None
+                    msgs = delta.get("messages") or []
+                    if msgs:
+                        preview = _extract_text(msgs[-1].content)[:200]
+                    event = {
+                        "event": "node",
+                        "node": node,
+                        "intent": delta.get("intent"),
+                        "intent_confidence": delta.get("intent_confidence"),
+                        "current_assignee": delta.get("current_assignee"),
+                        "message_preview": preview,
+                    }
+                else:
+                    event = {"event": "node", "node": node}
+                node_events.append(event)
+                yield _sse(event)
+
+        elif mode == "messages":
+            message_chunk, metadata = payload
+            # Only stream tokens from the final generator; worker SystemMessages
+            # also flow through this mode but are internal machinery.
+            if metadata.get("langgraph_node") != "generator":
+                continue
+            text = _extract_text(message_chunk.content)
+            if text:
+                yield _sse({"event": "token", "text": text})
+
+    snapshot = nexus_app.get_state(config)
+    status, paused_before = _derive_status(snapshot)
+    telemetry = _snapshot_telemetry(snapshot)
+    yield _sse(
+        {
+            "event": "done",
+            "status": status,
+            "paused_before": paused_before,
+            "reply": _last_ai_reply(snapshot) if status != "awaiting_approval" else "",
+            **telemetry,
+            "trace": node_events,
+        }
+    )
+
+
+@app.post("/chat/stream")
+@limiter.limit(settings.api_rate_limit)
+def chat_stream(request: Request, body: ChatRequest):
+    """Streaming variant of /chat — emits SSE events for nodes + LLM tokens."""
+    config = _thread_config(body.thread_id)
+    logger.info("chat.stream.request", thread_id=body.thread_id, len=len(body.message))
+    inputs = {"messages": [HumanMessage(content=body.message)]}
+    return StreamingResponse(
+        _stream_graph(inputs, config),
+        media_type="text/event-stream",
+        headers={"X-Accel-Buffering": "no"},  # hint to any proxy not to buffer
+    )
+
+
+@app.post("/chat/{thread_id}/approve/stream")
+@limiter.limit(settings.api_rate_limit)
+def approve_stream(request: Request, thread_id: str, body: ApproveRequest):
+    """Streaming variant of /approve — same idempotency rules as the JSON endpoint."""
+    if not body.approved:
+        raise HTTPException(status_code=501, detail="Rejection flow not yet implemented.")
+
+    config = _thread_config(thread_id)
+    snapshot = nexus_app.get_state(config)
+    is_paused = "billing_worker" in (snapshot.next or ())
+    has_history = bool((snapshot.values or {}).get("messages"))
+
+    if not is_paused and not has_history:
+        raise HTTPException(status_code=404, detail=f"Unknown thread {thread_id}.")
+
+    if not is_paused:
+        # Already complete — emit a single "done" frame and bail.
+        def _done_only():
+            status, paused_before = _derive_status(snapshot)
+            telemetry = _snapshot_telemetry(snapshot)
+            yield _sse(
+                {
+                    "event": "done",
+                    "status": status,
+                    "paused_before": paused_before,
+                    "reply": _last_ai_reply(snapshot),
+                    **telemetry,
+                    "trace": [],
+                }
+            )
+
+        return StreamingResponse(_done_only(), media_type="text/event-stream")
+
+    nexus_app.update_state(config, {"manager_approved": True})
+    logger.info("chat.approve.stream", thread_id=thread_id)
+    return StreamingResponse(
+        _stream_graph(None, config),
+        media_type="text/event-stream",
+        headers={"X-Accel-Buffering": "no"},
     )
