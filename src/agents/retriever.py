@@ -10,8 +10,12 @@ from src.agents.state import NexusState
 from src.config import settings
 
 # Load once at module import — same pattern as the classifier encoder.
+# Prefer the bundled KB when present (deployed container); else the dev path.
+_bundle_kb = settings.bundle_dir / "kb"
+_kb_path = _bundle_kb if _bundle_kb.exists() else settings.kb_dir
+
 _encoder = SentenceTransformer(settings.embedding_model_name)
-_client = chromadb.PersistentClient(path=str(settings.kb_dir))
+_client = chromadb.PersistentClient(path=str(_kb_path))
 _collection = _client.get_collection(settings.kb_collection_name)
 
 

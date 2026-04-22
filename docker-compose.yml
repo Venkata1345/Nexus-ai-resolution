@@ -1,0 +1,57 @@
+# =============================================================================
+# Nexus local + deployed orchestration.
+#
+# Local dev:      docker compose build && docker compose up
+# Production:     images are pulled from ghcr.io/<user>/nexus-api and
+#                 ghcr.io/<user>/nexus-ui (see docs/DEPLOY.md).
+#
+# The IMAGE_REGISTRY and TAG variables let you switch between "build locally"
+# and "pull from GHCR" without editing this file. Set them via .env or
+# environment before `docker compose pull`.
+# =============================================================================
+
+services:
+  api:
+    # When you're building locally, this `image` name is what the built image
+    # gets tagged as. When pulling from GHCR on the EC2 instance, this is
+    # the full image reference DC will pull (e.g. ghcr.io/.../nexus-api:v1).
+    image: ${IMAGE_REGISTRY:-nexus}/nexus-api:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: nexus-api
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # Override paths to point inside the container layout.
+      - MLFLOW_TRACKING_URI=sqlite:////tmp/mlflow-not-used.db
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    networks:
+      - nexus-net
+
+  ui:
+    image: ${IMAGE_REGISTRY:-nexus}/nexus-ui:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ui
+    container_name: nexus-ui
+    environment:
+      # The UI contacts the API via the internal docker network name "api".
+      - API_HOST=api
+      - API_PORT=8000
+      # Streamlit config still reads GEMINI_API_KEY from env because Settings
+      # declares it as required; its actual Gemini call never runs UI-side.
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    ports:
+      - "80:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - nexus-net
+
+networks:
+  nexus-net:
+    driver: bridge

@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     raw_data_path: Path = PROJECT_ROOT / "data" / "raw" / "bitext_support_data.csv"
     processed_data_dir: Path = PROJECT_ROOT / "data" / "processed"
     models_dir: Path = PROJECT_ROOT / "models"
+    # Self-contained inference bundle for deployed containers. Produced by
+    # `python -m src.router.bundle`. When this directory exists at runtime
+    # the router loads from it instead of hitting MLflow.
+    bundle_dir: Path = PROJECT_ROOT / "bundle"
 
     # -------- MLflow --------
     mlflow_tracking_uri: str = f"sqlite:///{PROJECT_ROOT / 'mlflow.db'}"

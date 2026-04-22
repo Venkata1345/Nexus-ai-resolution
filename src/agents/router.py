@@ -5,20 +5,24 @@ from __future__ import annotations
 from functools import lru_cache
 
 import joblib
-import mlflow
+import xgboost as xgb
 from sentence_transformers import SentenceTransformer
 
 from src.agents.state import NexusState
 from src.config import settings
 
 
-def _load_production_model():
-    """Load the model currently aliased @production in the MLflow Model Registry.
+def _load_bundle_model():
+    """Load the classifier from the flat bundle directory produced by src.router.bundle."""
+    model = xgb.XGBClassifier()
+    model.load_model(str(settings.bundle_dir / "xgb_model.ubj"))
+    return model
 
-    Promotion to @production is done by `python -m src.router.register`. The
-    agent never references run IDs directly, so swapping in a new model is a
-    one-liner and no code changes here.
-    """
+
+def _load_mlflow_production_model():
+    """Load the model currently aliased @production in the MLflow Model Registry."""
+    import mlflow  # lazy-imported so deployed containers don't need mlflow client configured
+
     mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
     uri = f"models:/{settings.mlflow_registered_model_name}@{settings.mlflow_production_alias}"
     try:
@@ -36,13 +40,20 @@ def _load_production_model():
 def _get_deps():
     """Load encoder + label encoder + classifier once, reuse forever.
 
-    Pulled out of module scope so importing this module doesn't touch disk or
-    MLflow -- tests can patch `_predict` or inject fakes without dragging in
-    the real heavy dependencies.
+    Prefers the self-contained bundle (produced by `python -m src.router.bundle`)
+    when present -- that's the path used inside deployed Docker containers.
+    Falls back to the MLflow registry for local development.
     """
-    label_encoder = joblib.load(settings.label_encoder_path)
+    if (settings.bundle_dir / "xgb_model.ubj").exists():
+        print(f"[router] Loading from bundle: {settings.bundle_dir}")
+        label_encoder = joblib.load(settings.bundle_dir / "label_encoder.pkl")
+        intent_model = _load_bundle_model()
+    else:
+        print("[router] Loading from MLflow registry")
+        label_encoder = joblib.load(settings.label_encoder_path)
+        intent_model = _load_mlflow_production_model()
+
     encoder = SentenceTransformer(settings.embedding_model_name)
-    intent_model = _load_production_model()
     return encoder, intent_model, label_encoder
 
 

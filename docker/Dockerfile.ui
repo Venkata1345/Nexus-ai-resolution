@@ -1,0 +1,48 @@
+# =============================================================================
+# Nexus UI (Streamlit) image.
+#
+# Much simpler than the API: Streamlit is a thin frontend and doesn't need
+# torch, xgboost, chroma, etc. It only needs httpx to talk to the API.
+# =============================================================================
+
+ARG PYTHON_VERSION=3.11-slim
+
+FROM python:${PYTHON_VERSION} AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# The UI only needs streamlit + httpx + pydantic-settings (for shared config).
+RUN pip install --upgrade pip && \
+    pip install \
+        "streamlit>=1.56" \
+        httpx \
+        "pydantic-settings>=2" \
+        "python-dotenv>=1"
+
+# Copy what the UI actually imports: shared config and the app itself.
+COPY src/__init__.py /app/src/__init__.py
+COPY src/config.py /app/src/config.py
+COPY app/ /app/app/
+
+RUN useradd --create-home --shell /bin/bash nexus && \
+    chown -R nexus:nexus /app
+USER nexus
+
+EXPOSE 8501
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+
+CMD ["streamlit", "run", "app/streamlit_app.py", \
+     "--server.port=8501", \
+     "--server.address=0.0.0.0", \
+     "--browser.gatherUsageStats=false", \
+     "--server.headless=true"]

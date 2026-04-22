@@ -1,0 +1,55 @@
+# Keep the Docker build context small and the image lean.
+# Anything listed here is NOT sent to the Docker daemon during `docker build`.
+
+# Git / editors
+.git
+.github
+.gitignore
+.vscode
+.idea
+.claude
+
+# Virtual envs
+.venv
+venv
+env
+
+# Python caches
+__pycache__
+*.py[cod]
+*.so
+.mypy_cache
+.ruff_cache
+.pytest_cache
+
+# Test / CI artifacts
+.coverage
+coverage.xml
+htmlcov
+
+# ML artifacts that DON'T go into the image (bundle/ IS included)
+mlruns
+mlflow.db
+mlflow.db-journal
+data/raw
+data/processed
+data/kb
+
+# Training pickles that would be re-bundled
+models
+
+# Notebooks / docs
+*.ipynb
+docs
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Personal planning doc
+PLAN.md
+
+# Secrets
+.env
+.env.*
+!.env.example
