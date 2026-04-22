@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     # escalates to a human instead of dispatching to a worker.
     intent_confidence_threshold: float = 0.3
 
+    # -------- API --------
+    api_host: str = "127.0.0.1"
+    api_port: int = 8000
+    api_rate_limit: str = "60/minute"  # per-IP limit for /chat endpoints
+    cors_allowed_origins: list[str] = ["http://localhost:8501", "http://127.0.0.1:8501"]
+
     # -------- Hyperparameter tuning --------
     optuna_n_trials: int = 20
 

@@ -36,6 +36,13 @@ dependencies = [
     # Utilities
     "python-dotenv",
     "pydantic-settings",
+    # API + UI
+    "fastapi",
+    "uvicorn[standard]",
+    "streamlit",
+    "slowapi",
+    "structlog",
+    "httpx",
 ]
 
 # Optional dependency groups — install with `pip install -e ".[dev]"`.

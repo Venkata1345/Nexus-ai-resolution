@@ -10,6 +10,14 @@ sentence-transformers
 optuna
 # Vector store for RAG
 chromadb
+
+# --- Phase 4: API + UI ---
+fastapi
+uvicorn[standard]
+streamlit
+slowapi
+structlog
+httpx
 # Pipeline + data versioning
 dvc
 # For confusion matrix figure
