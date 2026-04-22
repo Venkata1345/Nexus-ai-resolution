@@ -46,6 +46,17 @@ def _new_thread(label: str | None = None) -> str:
     return tid
 
 
+def _on_new_thread_click() -> None:
+    """Button callback: creates a thread and updates the selectbox widget.
+
+    Runs BEFORE the next rerun, which is the only time we're allowed to
+    modify `thread_selector` (Streamlit freezes widget state after the
+    widget has been instantiated in a given run).
+    """
+    new_tid = _new_thread()
+    st.session_state.thread_selector = new_tid
+
+
 if not st.session_state.threads:
     _new_thread()
 
@@ -100,9 +111,11 @@ with st.sidebar:
         key="thread_selector",
     )
     st.session_state.active_thread = chosen
-    if st.button("+ New conversation", use_container_width=True):
-        _new_thread()
-        st.rerun()
+    st.button(
+        "+ New conversation",
+        use_container_width=True,
+        on_click=_on_new_thread_click,
+    )
 
     st.divider()
 
