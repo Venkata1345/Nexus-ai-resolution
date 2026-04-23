@@ -38,6 +38,17 @@ RUN pip install --upgrade pip && \
 COPY docker/requirements-runtime.txt /build/requirements.txt
 RUN pip install -r /build/requirements.txt
 
+# Build the RAG knowledge base in the builder stage so the runtime image
+# doesn't have to ship ~130 MB of ChromaDB files via scp. We install the
+# `datasets` library just for this step (it's not part of runtime deps).
+RUN pip install datasets
+COPY data/download-data.py /build/data/download-data.py
+COPY src/ /build/src/
+# GEMINI_API_KEY is required by Settings but never used during KB build;
+# a stub satisfies pydantic-settings validation.
+RUN cd /build && mkdir -p data/raw && python data/download-data.py && \
+    GEMINI_API_KEY=build-stub python -m src.agents.kb_build
+
 # ---------- runtime stage ----------
 FROM python:${PYTHON_VERSION} AS runtime
 
@@ -65,6 +76,11 @@ RUN python -c "from sentence_transformers import SentenceTransformer; \
 # Copy source + inference bundle produced by `python -m src.router.bundle`.
 COPY src/ /app/src/
 COPY bundle/ /app/bundle/
+
+# Pull the KB from the builder stage into the bundle directory. This keeps
+# the deployed runtime behaviour identical (code still reads bundle/kb) but
+# avoids shipping 130 MB of ChromaDB files through scp.
+COPY --from=builder /build/data/kb /app/bundle/kb
 
 # Non-root user for a bit of runtime hygiene.
 RUN useradd --create-home --shell /bin/bash nexus && \
