@@ -52,12 +52,12 @@ flowchart LR
     router -->|high conf| sup[Supervisor]
     sup -->|track_order| ship[Shipping Worker]
     sup -->|refund / cancel| bill[Billing Worker<br/>🛑 Approval gate]
-    sup -->|other| gen[Retriever → Generator]
+    sup -->|other| gen[Retriever then Generator]
     ship --> gen
     bill --> gen
     gen -->|stream tokens| api
     kb[(ChromaDB<br/>27k FAQs)] -.->|RAG| gen
-    registry[(MLflow Registry)] -.->|@production| router
+    registry[(MLflow Registry)] -.->|production alias| router
 ```
 
 - **Router**: sentence-transformer (`all-MiniLM-L6-v2`) embeddings fed to an
