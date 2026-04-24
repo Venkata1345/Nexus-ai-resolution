@@ -107,6 +107,7 @@ filterwarnings = [
 branch = true
 source = ["src"]
 omit = [
+    # Offline pipeline scripts — exercised by `dvc repro`, not request flow.
     "src/router/train_tfidf.py",
     "src/router/train_embeddings.py",
     "src/router/tune.py",
@@ -115,6 +116,9 @@ omit = [
     "src/router/register.py",
     "src/router/compare.py",
     "src/router/embed.py",
+    "src/router/_features.py",
+    "src/router/bundle.py",
+    "src/router/preprocess.py",
     "src/agents/kb_build.py",
     "src/agents/agent.py",
     "src/agents/retriever.py",
