@@ -17,7 +17,9 @@ keywords = ["mlops", "langgraph", "xgboost", "customer-support", "agentic-ai"]
 # fully migrate install flows to `pip install -e .` in later phases.
 dependencies = [
     # ML & MLOps
-    "xgboost",
+    # `xgboost-cpu` avoids pulling ~2 GB of NVIDIA CUDA wheels. We train + serve
+    # on CPU; the GPU build is never used. Same package drop as requirements-runtime.txt.
+    "xgboost-cpu",
     "scikit-learn",
     "pandas",
     "mlflow",

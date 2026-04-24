@@ -25,11 +25,12 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        # Install the project + dev extras (pytest, ruff). chromadb/torch are
-        # already runtime deps but we don't need them for lint+unit tests; we
-        # install the full set anyway so test imports match production.
+        # Preinstall CPU-only torch so sentence-transformers doesn't drag in
+        # the GPU build (~2 GB of NVIDIA CUDA wheels, times out the runner).
+        # After that, the editable install sees torch as already-satisfied.
         run: |
           python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -e ".[dev]"
 
       - name: Ruff lint
