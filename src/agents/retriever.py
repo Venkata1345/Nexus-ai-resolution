@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 import chromadb
 from langchain_core.messages import SystemMessage
 from sentence_transformers import SentenceTransformer
@@ -9,28 +11,38 @@ from sentence_transformers import SentenceTransformer
 from src.agents.state import NexusState
 from src.config import settings
 
-# Load once at module import — same pattern as the classifier encoder.
-# Prefer the bundled KB when present (deployed container); else the dev path.
-_bundle_kb = settings.bundle_dir / "kb"
-_kb_path = _bundle_kb if _bundle_kb.exists() else settings.kb_dir
 
-_encoder = SentenceTransformer(settings.embedding_model_name)
-_client = chromadb.PersistentClient(path=str(_kb_path))
-_collection = _client.get_collection(settings.kb_collection_name)
+@lru_cache(maxsize=1)
+def _get_deps():
+    """Load encoder + Chroma collection once, reuse forever.
+
+    Prefers the bundled KB (deployed container) over the dev path. Lazy so
+    that merely importing this module doesn't require a KB on disk — tests
+    and tooling that stub out the graph can import freely.
+    """
+    bundle_kb = settings.bundle_dir / "kb"
+    kb_path = bundle_kb if bundle_kb.exists() else settings.kb_dir
+
+    encoder = SentenceTransformer(settings.embedding_model_name)
+    client = chromadb.PersistentClient(path=str(kb_path))
+    collection = client.get_collection(settings.kb_collection_name)
+    return encoder, collection
 
 
 def retrieve_knowledge_node(state: NexusState):
     """Find the top-k most similar FAQ entries and inject them into state as context."""
     print("\n[Retriever] Searching knowledge base...")
 
+    encoder, collection = _get_deps()
+
     latest_user_text = state["messages"][-1].content
-    query_emb = _encoder.encode(
+    query_emb = encoder.encode(
         [latest_user_text],
         convert_to_numpy=True,
         normalize_embeddings=True,
     )
 
-    results = _collection.query(
+    results = collection.query(
         query_embeddings=query_emb.tolist(),
         n_results=settings.kb_top_k,
         include=["documents", "metadatas", "distances"],
