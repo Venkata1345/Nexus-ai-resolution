@@ -69,9 +69,7 @@ def bundle() -> None:
 
     # 3) ChromaDB KB — directory copy.
     if not settings.kb_dir.exists():
-        raise RuntimeError(
-            f"Missing {settings.kb_dir}. Run `python -m src.agents.kb_build` first."
-        )
+        raise RuntimeError(f"Missing {settings.kb_dir}. Run `python -m src.agents.kb_build` first.")
     shutil.copytree(settings.kb_dir, out / "kb")
     print(f"[bundle] Copied KB -> {out / 'kb'}")
 

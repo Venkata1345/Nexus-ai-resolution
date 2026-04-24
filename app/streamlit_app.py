@@ -104,9 +104,7 @@ def _stream_sse(path: str, payload: dict, sink: dict) -> Iterator[str]:
     sink["trace"] = []
     sink["final"] = None
     try:
-        with httpx.stream(
-            "POST", f"{API_BASE}{path}", json=payload, timeout=120
-        ) as response:
+        with httpx.stream("POST", f"{API_BASE}{path}", json=payload, timeout=120) as response:
             response.raise_for_status()
             for line in response.iter_lines():
                 if not line or not line.startswith("data:"):
@@ -216,6 +214,7 @@ active = st.session_state.threads[st.session_state.active_thread]
 for msg in active["messages"]:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+
 
 def _finalize_turn(full_text: str, sink: dict) -> None:
     """Update session state after a stream completes."""

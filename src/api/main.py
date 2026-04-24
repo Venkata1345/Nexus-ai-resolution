@@ -19,9 +19,8 @@ from dotenv import load_dotenv
 # Must precede any import that instantiates the Gemini client.
 load_dotenv()
 
-from contextlib import asynccontextmanager  # noqa: E402
-
 import json  # noqa: E402
+from contextlib import asynccontextmanager  # noqa: E402
 
 from fastapi import FastAPI, HTTPException, Request  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
@@ -334,6 +333,7 @@ def history(thread_id: str) -> HistoryResponse:
 # Streaming endpoints (Server-Sent Events)
 # =============================================================================
 
+
 def _sse(event_obj: dict) -> str:
     """Format a dict as a single SSE `data: ...\\n\\n` frame."""
     return f"data: {json.dumps(event_obj)}\n\n"
@@ -347,9 +347,7 @@ def _stream_graph(inputs: dict | None, config: dict):
     """
     node_events: list[dict] = []
 
-    for chunk in nexus_app.stream(
-        inputs, config, stream_mode=["updates", "messages"]
-    ):
+    for chunk in nexus_app.stream(inputs, config, stream_mode=["updates", "messages"]):
         mode, payload = chunk
 
         if mode == "updates":
