@@ -48,7 +48,8 @@ dependencies = [
 # Optional dependency groups — install with `pip install -e ".[dev]"`.
 [project.optional-dependencies]
 dev = [
-    "ruff",
+    # Pin ruff so local and CI agree on import-ordering rules.
+    "ruff==0.15.11",
     "mypy",
     "pytest",
     "pytest-cov",
